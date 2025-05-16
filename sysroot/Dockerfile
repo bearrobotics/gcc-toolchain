@@ -285,9 +285,38 @@ RUN ln -s /var/builds/sysroot/usr/lib/ld-linux-x86-64.so.2 /usr/lib/ld-linux-x86
 RUN make --jobs $(nproc)
 RUN make DESTDIR=/var/buildlibs/libX11 install
 
-####################################################################################################
-# Assemble final sysroots
-####################################################################################################
+##############################
+# Bear Sysroot
+#################################
+
+FROM base_image AS libdbus_download
+
+FROM build_image AS bear_sysroot_build
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc /var/buildlibs/glibc /var/builds/sysroot
+
+WORKDIR /tmp
+
+# Install libexpat for libdbus
+RUN apt download libexpat1=2.4.7-1ubuntu0.6 libexpat1-dev=2.4.7-1ubuntu0.6 expat=2.4.7-1ubuntu0.6 
+RUN mkdir -p /var/buildlibs/bear /var/builds/sysroot
+RUN dpkg-deb -x libexpat1-dev_2.4.7-1ubuntu0.6_amd64.deb /var/buildlibs/bear
+RUN dpkg-deb -x libexpat1_2.4.7-1ubuntu0.6_amd64.deb /var/buildlibs/bear
+RUN dpkg-deb -x expat_2.4.7-1ubuntu0.6_amd64.deb /var/buildlibs/bear
+
+# Install libsystemd for libdbus
+RUN apt download libsystemd0=249.11-0ubuntu3.15 libsystemd-dev=249.11-0ubuntu3.15
+RUN dpkg-deb -x libsystemd0_249.11-0ubuntu3.15_amd64.deb /var/buildlibs/bear
+RUN dpkg-deb -x libsystemd-dev_249.11-0ubuntu3.15_amd64.deb /var/buildlibs/bear
+
+# Install libdbus
+RUN apt download libdbus-1-3=1.12.20-2ubuntu4.1 libdbus-1-dev=1.12.20-2ubuntu4.1
+RUN dpkg-deb -x libdbus-1-3_1.12.20-2ubuntu4.1_amd64.deb /var/buildlibs/bear
+RUN dpkg-deb -x libdbus-1-dev_1.12.20-2ubuntu4.1_amd64.deb /var/buildlibs/bear
+
+# ####################################################################################################
+# # Assemble final sysroots
+# ####################################################################################################
 
 FROM build_image AS sysroot_base
 COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
@@ -297,3 +326,12 @@ COPY --from=gcc /var/buildlibs/gcc /var/builds/sysroot
 FROM build_image AS sysroot_X11
 COPY --from=sysroot_base /var/builds/sysroot /var/builds/sysroot
 COPY --from=libX11 /var/buildlibs/libX11 /var/builds/sysroot
+
+FROM build_image AS sysroot_bear
+COPY --from=sysroot_base /var/builds/sysroot /var/builds/sysroot
+COPY --from=bear_sysroot_build /var/buildlibs/bear /var/builds/sysroot
+COPY --from=bear_sysroot_build /var/buildlibs/bear/lib/x86_64-linux-gnu/* /var/builds/sysroot/usr/lib
+RUN mv /var/builds/sysroot/usr/lib/x86_64-linux-gnu/* /var/builds/sysroot/usr/lib
+
+# systemd
+# libc6 (>= 2.34), libcap2 (>= 1:2.24-9~), libgcrypt20 (>= 1.9.0), liblz4-1 (>= 0.0~r122), liblzma5 (>= 5.1.1alpha+20120614), libzstd1 (>= 1.4.0)
