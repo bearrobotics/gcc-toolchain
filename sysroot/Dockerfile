@@ -305,9 +305,8 @@ RUN dpkg-deb -x libexpat1_2.4.7-1ubuntu0.6_amd64.deb /var/buildlibs/bear
 RUN dpkg-deb -x expat_2.4.7-1ubuntu0.6_amd64.deb /var/buildlibs/bear
 
 # Install libsystemd for libdbus
-RUN apt download libsystemd0=249.11-0ubuntu3.15 libsystemd-dev=249.11-0ubuntu3.15
-RUN dpkg-deb -x libsystemd0_249.11-0ubuntu3.15_amd64.deb /var/buildlibs/bear
-RUN dpkg-deb -x libsystemd-dev_249.11-0ubuntu3.15_amd64.deb /var/buildlibs/bear
+RUN apt download libsystemd0=249.11-0ubuntu3.15 libsystemd-dev=249.11-0ubuntu3.15 liblz4-1=1.9.3-2build2 libzstd1=1.4.8+dfsg-3build1 liblzma5=5.2.5-2ubuntu1 libcap2=1:2.44-1ubuntu0.22.04.2 libgcrypt20=1.9.4-3ubuntu3 libgpg-error0=1.43-3
+RUN for deb in *.deb; do dpkg-deb -x "$deb" /var/buildlibs/bear; done
 
 # Install libdbus
 RUN apt download libdbus-1-3=1.12.20-2ubuntu4.1 libdbus-1-dev=1.12.20-2ubuntu4.1
