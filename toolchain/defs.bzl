@@ -258,6 +258,7 @@ def gcc_register_toolchain(
     if not sysroot:
         sysroot_variant = kwargs.pop("sysroot_variant", target_arch)
         sysroot_repository_name = "sysroot_{sysroot_variant}".format(sysroot_variant = sysroot_variant)
+        print(sysroot_repository_name)
         sysroot = Label("@{sysroot_repository_name}//:sysroot".format(
             sysroot_repository_name = sysroot_repository_name,
         ))
@@ -296,6 +297,7 @@ def gcc_register_toolchain(
         url = kwargs.pop("url", _TOOLCHAINS[gcc_version][target_arch].url),
     )
 
+    print(str(sysroot))
     gcc_toolchain(
         name = name,
         binary_prefix = binary_prefix,
@@ -329,8 +331,8 @@ _SYSROOTS = {
         url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-armv7.tar.xz",
     ),
     "x86_64": struct(
-        sha256 = "70e38e7b5ffc67fe599f761b04ab30b41b66f264b19bba1504902198a2cd046a",
-        url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-x86_64.tar.xz",
+        sha256 = "197c61f2bd6b771c5c562828cd13089d811277425ca2e30b062d9867b5e46956",
+        url = "https://storage.googleapis.com/bazel-deps/sysroot-base-x86_64.tar.xz",
     ),
     "x86_64-X11": struct(
         sha256 = "806023b77643c311892c46b474d10bf4c536671eb8714a008b4e5d8c1b7a7176",

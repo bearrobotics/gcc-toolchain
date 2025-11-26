@@ -285,6 +285,39 @@ RUN ln -s /var/builds/sysroot/usr/lib/ld-linux-x86-64.so.2 /usr/lib/ld-linux-x86
 RUN make --jobs $(nproc)
 RUN make DESTDIR=/var/buildlibs/libX11 install
 
+FROM base_image AS ffmpeg_download
+WORKDIR /downloads/ffmpeg
+RUN curl --fail-early --location https://ffmpeg.org/releases/ffmpeg-4.2.7.tar.gz \
+      | tar --gzip --extract --strip-components=1 --file -
+
+FROM build_image AS libffmpeg
+# Bring in the current sysroot to satisfy headers and libs
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc /var/buildlibs/glibc /var/builds/sysroot
+COPY --from=gcc /var/buildlibs/gcc   /var/builds/sysroot
+
+# Downloaded sources
+COPY --from=ffmpeg_download /downloads/ffmpeg /build/ffmpeg
+WORKDIR /build/ffmpeg/build
+# FFmpeg dependencies (minimal)
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    yasm \
+    pkg-config \
+    zlib1g-dev
+# Configure for cross‑compilation.  configure.sh sets CC/LD flags for the target.
+# We disable unneeded programs and docs, build only shared libraries and enable PIC.
+RUN ../configure \
+    --prefix=/usr \
+    --sysroot=/var/builds/sysroot \
+    --enable-cross-compile \
+    --disable-static \
+    --enable-shared \
+    --disable-doc --disable-programs || (cat config.log && exit 1)
+
+RUN make -j$(nproc)
+RUN make DESTDIR=/var/buildlibs/ffmpeg install
+
+
 ####################################################################################################
 # Assemble final sysroots
 ####################################################################################################
@@ -293,6 +326,7 @@ FROM build_image AS sysroot_base
 COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
 COPY --from=glibc /var/buildlibs/glibc /var/builds/sysroot
 COPY --from=gcc /var/buildlibs/gcc /var/builds/sysroot
+COPY --from=libffmpeg    /var/buildlibs/ffmpeg /var/builds/sysroot
 
 FROM build_image AS sysroot_X11
 COPY --from=sysroot_base /var/builds/sysroot /var/builds/sysroot
