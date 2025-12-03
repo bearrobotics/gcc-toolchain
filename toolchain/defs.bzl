@@ -331,7 +331,7 @@ _SYSROOTS = {
         url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-armv7.tar.xz",
     ),
     "x86_64": struct(
-        sha256 = "197c61f2bd6b771c5c562828cd13089d811277425ca2e30b062d9867b5e46956",
+        sha256 = "b43f46f39d5dad3be80b57e7f64425ff3574a6c7387401020d890543f044baf7",
         url = "https://storage.googleapis.com/bazel-deps/sysroot-base-x86_64.tar.xz",
     ),
     "x86_64-X11": struct(
@@ -353,9 +353,9 @@ _TOOLCHAINS = {
             url = "https://toolchains.bootlin.com/downloads/releases/toolchains/armv7-eabihf/tarballs/armv7-eabihf--glibc--stable-2021.11-1.tar.bz2",
         ),
         "x86_64": struct(
-            sha256 = "6fe812add925493ea0841365f1fb7ca17fd9224bab61a731063f7f12f3a621b0",
-            strip_prefix = "x86-64--glibc--stable-2021.11-5",
-            url = "https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--glibc--stable-2021.11-5.tar.bz2",
+            sha256 = "861c1e8ad0a66e4c28e7a1f8319d68080ab0ff8d16a765e65540f1957203a190",
+            strip_prefix = "x86-64--glibc--stable-2022.08-1",
+            url = "https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--glibc--stable-2022.08-1.tar.bz2",
         ),
     },
 }
