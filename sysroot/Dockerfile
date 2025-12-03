@@ -317,16 +317,133 @@ RUN ../configure \
 RUN make -j$(nproc)
 RUN make DESTDIR=/var/buildlibs/ffmpeg install
 
+FROM base_image AS expat_download
+WORKDIR /downloads/expat
+RUN curl --fail-early --location https://github.com/libexpat/libexpat/releases/download/R_2_6_2/expat-2.6.2.tar.gz \
+      | tar --gzip --extract --strip-components=1 --file -
+
+FROM build_image AS libexpat
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc  /var/buildlibs/glibc  /var/builds/sysroot
+COPY --from=gcc    /var/buildlibs/gcc    /var/builds/sysroot
+
+COPY --from=expat_download /downloads/expat /build/expat
+WORKDIR /build/expat
+
+# expat .so / .o need PIC
+ENV CFLAGS="-fPIC"
+
+RUN ./configure \
+    --prefix=/usr \
+    --with-sysroot=/var/builds/sysroot \
+    --disable-static \
+    --enable-shared
+
+RUN make -j"$(nproc)"
+RUN make DESTDIR=/var/buildlibs/expat install
+
+FROM base_image AS dbus_download
+WORKDIR /downloads/dbus
+RUN curl --fail-early --location https://dbus.freedesktop.org/releases/dbus/dbus-1.14.10.tar.xz \
+      | tar --xz --extract --strip-components=1 --file -
+
+FROM build_image AS libdbus
+# Base sysroot (glibc, toolchain, etc.)
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc  /var/buildlibs/glibc  /var/builds/sysroot
+COPY --from=gcc    /var/buildlibs/gcc    /var/builds/sysroot
+
+# Staged expat we just built
+COPY --from=libexpat /var/buildlibs/expat /var/buildlibs/expat
+
+# Tell pkg-config / compiler / linker to look in the expat staging dir,
+# JUST like the X11 example does with libX11.
+ENV PKG_CONFIG_PATH="/var/buildlibs/expat/usr/lib/pkgconfig"
+ENV CPPFLAGS="-I/var/buildlibs/expat/usr/include"
+ENV LDFLAGS="-L/var/buildlibs/expat/usr/lib"
+
+COPY --from=dbus_download /downloads/dbus /build/dbus
+WORKDIR /build/dbus
+
+RUN ./configure \
+    --prefix=/usr \
+    --with-sysroot=/var/builds/sysroot \
+    --disable-static \
+    --enable-shared \
+    --without-x \
+    --disable-tests \
+    --disable-doxygen-docs \
+    --disable-xml-docs
+
+RUN make -j"$(nproc)"
+RUN make DESTDIR=/var/buildlibs/dbus install
+
+FROM base_image AS zlib_download
+WORKDIR /downloads/zlib
+RUN curl --fail-early --location https://zlib.net/zlib-1.3.1.tar.gz \
+    | tar --gzip --extract --strip-components=1 --file -
+
+FROM build_image AS libzlib
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc  /var/buildlibs/glibc  /var/builds/sysroot
+COPY --from=gcc    /var/buildlibs/gcc    /var/builds/sysroot
+
+COPY --from=zlib_download /downloads/zlib /build/zlib
+WORKDIR /build/zlib
+ENV CFLAGS="-fPIC"
+RUN ./configure \
+    --prefix=/usr \
+    --static \
+    --uname=Linux
+
+RUN make -j$(nproc)
+RUN make DESTDIR=/var/buildlibs/zlib install
+
+FROM base_image AS openssl_download
+WORKDIR /downloads/openssl
+RUN curl --fail-early --location https://www.openssl.org/source/openssl-1.1.1w.tar.gz \
+      | tar --gzip --extract --strip-components=1 --file -
+
+FROM build_image AS libopenssl
+
+# Bring in current sysroot to satisfy headers & libs
+COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
+COPY --from=glibc /var/buildlibs/glibc /var/builds/sysroot
+COPY --from=gcc /var/buildlibs/gcc   /var/builds/sysroot
+COPY --from=libzlib /var/buildlibs/zlib   /var/builds/sysroot
+
+# Downloaded sources
+COPY --from=openssl_download /downloads/openssl /build/openssl
+WORKDIR /build/openssl
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    zlib1g-dev \
+    pkg-config
+# Configure for sysroot target
+# Note: OpenSSL builds its own configure script, not autotools.
+RUN ./Configure linux-x86_64 \
+    --prefix=/usr \
+    --openssldir=/etc/ssl \
+    --cross-compile-prefix=${ARCH}-linux- \
+    --sysroot=/var/builds/sysroot \
+    --with-zlib-lib=/var/builds/sysroot/usr/lib \
+    --with-zlib-include=/var/builds/sysroot/usr/include \
+    shared zlib
+
+RUN make -j$(nproc)
+RUN make DESTDIR=/var/buildlibs/openssl install_sw
 
 ####################################################################################################
 # Assemble final sysroots
 ####################################################################################################
 
 FROM build_image AS sysroot_base
-COPY --from=kernel /var/buildlibs/kernel /var/builds/sysroot
-COPY --from=glibc /var/buildlibs/glibc /var/builds/sysroot
-COPY --from=gcc /var/buildlibs/gcc /var/builds/sysroot
-COPY --from=libffmpeg    /var/buildlibs/ffmpeg /var/builds/sysroot
+COPY --from=kernel     /var/buildlibs/kernel   /var/builds/sysroot
+COPY --from=glibc      /var/buildlibs/glibc    /var/builds/sysroot
+COPY --from=gcc        /var/buildlibs/gcc      /var/builds/sysroot
+COPY --from=libffmpeg  /var/buildlibs/ffmpeg   /var/builds/sysroot
+COPY --from=libzlib    /var/buildlibs/zlib     /var/builds/sysroot
+COPY --from=libopenssl /var/buildlibs/openssl  /var/builds/sysroot. 
+COPY --from=libdbus    /var/buildlibs/dbus     /var/builds/sysroot
 
 FROM build_image AS sysroot_X11
 COPY --from=sysroot_base /var/builds/sysroot /var/builds/sysroot
