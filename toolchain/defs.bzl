@@ -305,7 +305,10 @@ def gcc_register_toolchain(
         extra_cxxflags = kwargs.pop("extra_cxxflags", cxxflags),
         extra_fflags = kwargs.pop("extra_fflags", fflags),
         extra_ldflags = kwargs.pop("extra_ldflags", ldflags(target_arch, gcc_version)),
-        includes = kwargs.pop("includes", includes(target_arch, gcc_version)),
+        includes = kwargs.pop("includes", includes(target_arch, gcc_version)) + [
+            "%sysroot%/usr/include/dbus-1.0",
+            "%sysroot%/usr/lib/dbus-1.0/include",
+        ],
         sysroot = str(sysroot),
         target_arch = target_arch,
         toolchain_files_repository_name = toolchain_files_repository_name,
@@ -331,7 +334,7 @@ _SYSROOTS = {
         url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-armv7.tar.xz",
     ),
     "x86_64": struct(
-        sha256 = "197c61f2bd6b771c5c562828cd13089d811277425ca2e30b062d9867b5e46956",
+        sha256 = "f37e7857338045c3fb5b34dd4c300551d815f23516ac8293d7af51faf132c933",
         url = "https://storage.googleapis.com/bazel-deps/sysroot-base-x86_64.tar.xz",
     ),
     "x86_64-X11": struct(
